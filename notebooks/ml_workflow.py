@@ -1,25 +1,32 @@
 # Importing the basic libraries
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Importing preprocessers
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, LearningCurveDisplay, learning_curve, ValidationCurveDisplay, validation_curve
 
 # Importing the classifiers
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import GradientBoostingClassifier
 
+# Importing the visualization tools
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 # One function for pre-processing
 
 ## Kidney dataset '?' handling
 def question_mark_handling(data, cols):
-    for col in cols:
-        filter = data[col].str.contains('?')
-        data[filter].loc[:, col] = np.nan
+    data[cols] = data[cols].apply(lambda x: np.nan if ('?' in x) or ('\?' in x) else x)
+    data[cols] = data[cols].astype('float64')
     return data
 
-##### classification, cad, dm,
+##### classification, cad, dm
+def format_col(data):
+    cat_col = data.select_dtypes(include=['object']).columns.to_list()
+    data[cat_col] = data[cat_col].astype('str').map(lambda x: x.lower().strip())
+    return data
 ##### pcv, wc, rc
 
 
@@ -88,10 +95,34 @@ def prepare_dataset(data, label):
 def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifier):
     
     clf = classifier.fit(X_train, y_train)
-    test_score = clf.score(X_test, y_test)
-    val_score = cross_val_score(classifier, X_val, y_val)
-    return test_score, val_score
+    #test_score = clf.score(X_test, y_test)
+    #val_score = cross_val_score(classifier, X_val, y_val)
+    return clf
 
 # One function to display all the results in a convenient form for comparison
-def display_results():
-    pass
+def display_results(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, plot):
+    if plot == 'cm':
+        #for clf in classifiers:
+        predictions = clf.predict(X_test)
+        cm = confusion_matrix(y_test, predictions, labels=clf.classes_)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                    display_labels=clf.classes_)
+        disp.plot()
+        
+        plt.show()
+    # if plot == 'lc':
+    #     for clf in classifiers:
+    #         train_sizes, train_scores, test_scores = learning_curve(clf, X_train, y_train)
+    #         display = LearningCurveDisplay(train_sizes=train_sizes, train_scores=train_scores, 
+    #                                        test_scores=test_scores, score_name="Score")
+    #         display.plot()
+    #     plt.show()
+
+    # if plot == 'vc':
+    #     for clf in classifiers:
+    #         param_name, param_range = "C", np.logspace(-8, 3, 10)
+    #         train_scores, test_scores = validation_curve(clf, X_val, y_val, param_name=param_name, param_range=param_range)
+    #         display = ValidationCurveDisplay(param_name=param_name, param_range=param_range, 
+    #                                          train_scores=train_scores, test_scores=test_scores, score_name="Score")
+    #         display.plot()
+        plt.show()
