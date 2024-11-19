@@ -17,12 +17,11 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 # One function for pre-processing
 
 ## Kidney dataset '?' handling
-def question_mark_handling(data, cols):
-    data[cols] = data[cols].apply(lambda x: np.nan if ('?' in x) or ('\?' in x) else x)
-    data[cols] = data[cols].astype('float64')
+def question_mark_handling(data):
+    data = data.replace(['?'], np.nan)
     return data
 
-##### classification, cad, dm
+## Format the categorical features
 def format_col(data):
     cat_col = data.select_dtypes(include=['object']).columns.to_list()
     data[cat_col] = data[cat_col].astype('str').map(lambda x: x.lower().strip())
@@ -93,14 +92,13 @@ def prepare_dataset(data, label):
 
 # One function for training (typically applies up to 5 different methods for binary classification)
 def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifier):
-    
+    clf_fit = classifier
     clf = classifier.fit(X_train, y_train)
-    #test_score = clf.score(X_test, y_test)
-    #val_score = cross_val_score(classifier, X_val, y_val)
-    return clf
+    return clf, clf_fit
+
 
 # One function to display all the results in a convenient form for comparison
-def display_results(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, plot):
+def display_results(X_train, X_val, X_test, y_train, y_val, y_test, clf, clf_fit, plot):
     if plot == 'cm':
         #for clf in classifiers:
         predictions = clf.predict(X_test)
@@ -110,13 +108,14 @@ def display_results(X_train, X_val, X_test, y_train, y_val, y_test, classifiers,
         disp.plot()
         
         plt.show()
-    # if plot == 'lc':
-    #     for clf in classifiers:
-    #         train_sizes, train_scores, test_scores = learning_curve(clf, X_train, y_train)
-    #         display = LearningCurveDisplay(train_sizes=train_sizes, train_scores=train_scores, 
-    #                                        test_scores=test_scores, score_name="Score")
-    #         display.plot()
-    #     plt.show()
+    if plot == 'lc':
+        #for clf in classifiers:
+            train_sizes, train_scores, test_scores = learning_curve(clf_fit, X_train, y_train)
+            display = LearningCurveDisplay(train_sizes=train_sizes, train_scores=train_scores, 
+                                           test_scores=test_scores, score_name="Score")
+            display.plot()
+            
+            plt.show()
 
     # if plot == 'vc':
     #     for clf in classifiers:
@@ -125,4 +124,5 @@ def display_results(X_train, X_val, X_test, y_train, y_val, y_test, classifiers,
     #         display = ValidationCurveDisplay(param_name=param_name, param_range=param_range, 
     #                                          train_scores=train_scores, test_scores=test_scores, score_name="Score")
     #         display.plot()
-        plt.show()
+            
+    #         plt.show()
