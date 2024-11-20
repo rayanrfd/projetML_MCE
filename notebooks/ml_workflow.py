@@ -4,15 +4,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Importing preprocessers
-from sklearn.model_selection import train_test_split, cross_val_score, LearningCurveDisplay, learning_curve, ValidationCurveDisplay, validation_curve
+from sklearn.model_selection import train_test_split, cross_val_score, LearningCurveDisplay, learning_curve, ValidationCurveDisplay, validation_curve, KFold
 
 # Importing the classifiers
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 
 # Importing the visualization tools
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+
+classifiers = {
+    'Logistic Regression': LogisticRegression(),
+    'SVC': SVC(),
+    'GradientBoosting': GradientBoostingClassifier(),
+    'KNeighbor': KNeighborsClassifier(),
+    'MLP': MLPClassifier()
+}
+
 
 # One function for pre-processing
 
@@ -31,7 +43,7 @@ def format_col(data):
 
 ## Divides the dataset between the features and the label
 def extract_label(data, column):
-    label = data[column]
+    label = pd.factorize(data[column])
     data = data.drop(column, axis=1)
     return data, label
 
@@ -71,6 +83,8 @@ def data_preprocessing_encode(data): #, num_col, cat_col, ord_col):
 
 ## We combine the two preprocessing steps into one function
 def data_preprocessing(data, label_column): #, num_col, cat_col, ord_col, mean_col, freq_col, uknw_col, value):
+    data = format_col(data)
+    data = question_mark_handling(data)
     data.drop_duplicates(inplace=True)
     data, label = extract_label(data, label_column)
     imputed_data = data_preprocessing_impute(data)
@@ -85,44 +99,39 @@ def prepare_dataset(data, label):
     X = np.array(data)
     y = np.array(label)
     # We split the dataset between a train set, a validation set and a test set
-    X_train, X_, y_train, y_ = train_test_split(X, y, test_size=0.33, random_state=42)
+    X_train, X_, y_train, y_ = train_test_split(X, y, test_size=0.3, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_, y_, test_size=0.5, random_state=42)
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 # One function for training (typically applies up to 5 different methods for binary classification)
-def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifier):
-    clf_fit = classifier
-    clf = classifier.fit(X_train, y_train)
-    return clf, clf_fit
+def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, scoring='accuracy'):
+    trained_models = {}
+    val_accuracy = []
+    mean_val_accuracy = {}
+    cm = {}
+
+    for name, model in classifiers:
+        trained_models[name] = model.fit(X_train, y_train)
+    
+    for name, model in classifiers:
+        kfold = KFold(n_splits=10)
+        cv_results = cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
+        val_accuracy.append(cv_results)
+        mean_val_accuracy[name] = cv_results.mean()
+
+    for name, model in trained_models:
+            predictions = model.predict(X_test)
+            cm = confusion_matrix(y_test, predictions, labels=model.classes_)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                        display_labels=model.classes_)
+            title = f'Confusion matrix for the {name} model'
+            cm[title] = disp
+    
+    
+    return trained_models, mean_val_accuracy, cm
 
 
 # One function to display all the results in a convenient form for comparison
-def display_results(X_train, X_val, X_test, y_train, y_val, y_test, clf, clf_fit, plot):
-    if plot == 'cm':
-        #for clf in classifiers:
-        predictions = clf.predict(X_test)
-        cm = confusion_matrix(y_test, predictions, labels=clf.classes_)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                    display_labels=clf.classes_)
-        disp.plot()
-        
-        plt.show()
-    if plot == 'lc':
-        #for clf in classifiers:
-            train_sizes, train_scores, test_scores = learning_curve(clf_fit, X_train, y_train)
-            display = LearningCurveDisplay(train_sizes=train_sizes, train_scores=train_scores, 
-                                           test_scores=test_scores, score_name="Score")
-            display.plot()
-            
-            plt.show()
-
-    # if plot == 'vc':
-    #     for clf in classifiers:
-    #         param_name, param_range = "C", np.logspace(-8, 3, 10)
-    #         train_scores, test_scores = validation_curve(clf, X_val, y_val, param_name=param_name, param_range=param_range)
-    #         display = ValidationCurveDisplay(param_name=param_name, param_range=param_range, 
-    #                                          train_scores=train_scores, test_scores=test_scores, score_name="Score")
-    #         display.plot()
-            
-    #         plt.show()
+def display_results(X_train, X_val, X_test, y_train, y_val, y_test, trained_models):
+        pass
