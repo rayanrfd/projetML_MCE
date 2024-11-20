@@ -153,7 +153,7 @@ def display_results(mean_val_accuracy, confusion_matrices):
 ############################################################################
 
 '''
-We used ChatGPT to help us with the two previous functions because of time constraint
+We used ChatGPT to help us with the two previous functions because of time constraint   
 Below is the original functions that we tried
 '''
 
