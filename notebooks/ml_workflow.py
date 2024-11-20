@@ -37,8 +37,12 @@ def question_mark_handling(data):
 def format_col(data):
     cat_col = data.select_dtypes(include=['object']).columns.to_list()
     data[cat_col] = data[cat_col].astype('str').map(lambda x: x.lower().strip())
+    ##### pcv, wc, rc
+    numeric_columns = ['pvc', 'wc', 'rc']
+    for col in numeric_columns:
+        data[col] = pd.to_numeric(data[col])
     return data
-##### pcv, wc, rc
+
 
 
 ## Divides the dataset between the features and the label
