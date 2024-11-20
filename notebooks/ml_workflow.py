@@ -43,7 +43,7 @@ def format_col(data):
 
 ## Divides the dataset between the features and the label
 def extract_label(data, column):
-    label = pd.factorize(data[column])
+    label = data[column]
     data = data.drop(column, axis=1)
     return data, label
 
@@ -106,32 +106,35 @@ def prepare_dataset(data, label):
 
 # One function for training (typically applies up to 5 different methods for binary classification)
 def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, scoring='accuracy'):
-    trained_models = {}
+    trained_models = []
+    names = []
     val_accuracy = []
     mean_val_accuracy = {}
     cm = {}
 
     for name, model in classifiers:
-        trained_models[name] = model.fit(X_train, y_train)
+        trained_models.append(model.fit(X_train, y_train))
+        names.append(name)
     
     for name, model in classifiers:
         kfold = KFold(n_splits=10)
         cv_results = cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
         val_accuracy.append(cv_results)
-        mean_val_accuracy[name] = cv_results.mean()
+        mean_val_accuracy.append(cv_results.mean())
 
-    for name, model in trained_models:
+    for name, model in classifiers:        
             predictions = model.predict(X_test)
             cm = confusion_matrix(y_test, predictions, labels=model.classes_)
             disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                         display_labels=model.classes_)
             title = f'Confusion matrix for the {name} model'
             cm[title] = disp
-    
-    
+
     return trained_models, mean_val_accuracy, cm
 
 
 # One function to display all the results in a convenient form for comparison
-def display_results(X_train, X_val, X_test, y_train, y_val, y_test, trained_models):
-        pass
+def display_results(trained_models, mean_val_accuracy, cm):
+        for title, conf in cm:
+             plt.title(title)
+             plt.show()
