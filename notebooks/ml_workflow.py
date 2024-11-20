@@ -38,9 +38,8 @@ def format_col(data):
     cat_col = data.select_dtypes(include=['object']).columns.to_list()
     data[cat_col] = data[cat_col].astype('str').map(lambda x: x.lower().strip())
     ##### pcv, wc, rc
-    numeric_columns = ['pvc', 'wc', 'rc']
-    for col in numeric_columns:
-        data[col] = pd.to_numeric(data[col])
+    if ['pcv', 'wc', 'rc'] in data.columns.to_list():
+         data['pcv', 'wc', 'rc'] = data['pcv', 'wc', 'rc'].astype('float64')
     return data
 
 
@@ -110,35 +109,135 @@ def prepare_dataset(data, label):
 
 # One function for training (typically applies up to 5 different methods for binary classification)
 def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, scoring='accuracy'):
-    trained_models = []
-    names = []
-    val_accuracy = []
+    trained_models = {}
     mean_val_accuracy = {}
-    cm = {}
+    confusion_matrices = {}
 
-    for name, model in classifiers:
-        trained_models.append(model.fit(X_train, y_train))
-        names.append(name)
+    for name, model in classifiers.items():
+        # Model Training 
+        model.fit(X_train, y_train)
+        trained_models[name] = model
+
+        # We perform cross-validation
+        kfold = KFold(n_splits=5, random_state=42, shuffle=True)
+        cv_results = cross_val_score(model, X_val, y_val, cv=kfold, scoring=scoring)
+        mean_val_accuracy[name] = cv_results.mean()
+
+        # We compute the confusion matrices to plot them later
+        y_pred = model.predict(X_test)
+        cm = confusion_matrix(y_test, y_pred, labels=model.classes_)
+        confusion_matrices[name] = {
+            'confusion_matrix': cm,
+            'display': ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.classes_)
+        }
     
-    for name, model in classifiers:
-        kfold = KFold(n_splits=10)
-        cv_results = cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
-        val_accuracy.append(cv_results)
-        mean_val_accuracy.append(cv_results.mean())
+    return trained_models, mean_val_accuracy, confusion_matrices
 
-    for name, model in classifiers:        
-            predictions = model.predict(X_test)
-            cm = confusion_matrix(y_test, predictions, labels=model.classes_)
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                        display_labels=model.classes_)
-            title = f'Confusion matrix for the {name} model'
-            cm[title] = disp
-
-    return trained_models, mean_val_accuracy, cm
 
 
 # One function to display all the results in a convenient form for comparison
-def display_results(trained_models, mean_val_accuracy, cm):
-        for title, conf in cm:
-             plt.title(title)
-             plt.show()
+def display_results(mean_val_accuracy, confusion_matrices):
+    # Mean validation accuracy
+    for name, accuracy in mean_val_accuracy.items():
+        print(f"{name}: {accuracy:.2f}")
+
+    # Confusion matrix
+    for name, cm_data in confusion_matrices.items():
+        cm_data['display'].plot()
+        plt.title(f"Confusion Matrix - {name}")
+        plt.show()
+
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+
+'''
+We used ChatGPT to help us with the two previous functions because of time constraint
+Below is the original functions that we tried
+'''
+
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+
+# def training_validating_model(X_train, X_val, X_test, y_train, y_val, y_test, classifiers, scoring='accuracy'):
+#     trained_models = []
+#     names = []
+#     val_accuracy = []
+#     mean_val_accuracy = []
+#     cfm = []
+
+#     for name, model in classifiers.items():
+#         trained_models.append(model.fit(X_train, y_train))
+#         names.append(name)
+    
+#     for name, model in classifiers.items():
+#         kfold = KFold(n_splits=10)
+#         cv_results = cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
+#         val_accuracy.append(cv_results)
+#         mean_val_accuracy.append(cv_results.mean())
+
+#     for name, model in classifiers.items():        
+#             predictions = model.predict(X_test)
+#             cm = confusion_matrix(y_test, predictions, labels=model.classes_)
+#             disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+#                                         display_labels=model.classes_)
+#             title = f'Confusion matrix for the {name} model'
+#             cfm.append((title, disp))
+
+#     return trained_models, mean_val_accuracy, cfm
+
+
+# def display_results(trained_models, mean_val_accuracy, cfm):
+#         for conf in cfm:
+#             disp, title = conf
+#             plt.plot(disp)
+#             plt.title(title)
+#             plt.show()
+
+
+def unit_test_prepare_dataset(prepare_dataset):
+    data = [[i] for i in range(100)]
+    X = np.array(data)
+    label = [i%2 for i in range(100)]
+    y = np.array(label)
+
+    X_train, X_val, X_test, y_train, y_val, y_test = prepare_dataset(X, y)
+    if  X_train.shape[0] != 70 :
+        return "the shape of X_train is not what we expect it to be"
+    
+    if  X_val.shape[0] != 15 :
+        return "the shape of X_val is not what we expect it to be"
+    
+    if  X_test.shape[0] != 15 :
+        return "the shape of X_test is not what we expect it to be"
+    
+    if  X_train.shape[0] != len(y_train) :
+        return "the shape of y_train is not what we expect it to be"
+    
+    if  X_val.shape[0] != len(y_val) :
+        return "the shape of y_val is not what we expect it to be"
+    
+    if  X_test.shape[0] != len(y_test) :
+        return "the shape of y_test is not what we expect it to be"
+    
+    if  type(X_train) != np.ndarray :
+        return "the type of X_train is not what we expect it to be"
+    
+    if  type(X_val) != np.ndarray :
+        return "the type of X_val is not what we expect it to be"
+    
+    if  type(X_test) != np.ndarray :
+        return "the type of X_test is not what we expect it to be"
+
+    if  type(y_train) != np.ndarray :
+        return "the type of y_train is not what we expect it to be"
+    
+    if  type(y_val) != np.ndarray :
+        return "the type of y_val is not what we expect it to be"
+    
+    if  type(y_test) != np.ndarray :
+        return "the type of y_test is not what we expect it to be"
+    return 'All test passed !!'
